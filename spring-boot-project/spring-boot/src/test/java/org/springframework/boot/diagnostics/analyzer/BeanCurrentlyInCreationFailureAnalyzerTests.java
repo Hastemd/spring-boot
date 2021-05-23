@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,9 +94,9 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		assertThat(lines.get(0))
 				.isEqualTo("The dependencies of some of the beans in the application context form a cycle:");
 		assertThat(lines.get(1)).isEqualTo("");
-		assertThat(lines.get(2)).contains("refererOne " + "(field " + RefererTwo.class.getName());
+		assertThat(lines.get(2)).contains("refererOne (field " + RefererTwo.class.getName());
 		assertThat(lines.get(3)).isEqualTo("      ↓");
-		assertThat(lines.get(4)).contains("refererTwo " + "(field " + BeanOne.class.getName());
+		assertThat(lines.get(4)).contains("refererTwo (field " + BeanOne.class.getName());
 		assertThat(lines.get(5)).isEqualTo("┌─────┐");
 		assertThat(lines.get(6))
 				.startsWith("|  one defined in " + CycleReferencedViaOtherBeansConfiguration.class.getName());
@@ -107,6 +107,19 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		assertThat(lines.get(10))
 				.startsWith("|  three defined in " + CycleReferencedViaOtherBeansConfiguration.class.getName());
 		assertThat(lines.get(11)).isEqualTo("└─────┘");
+	}
+
+	@Test
+	void testSelfReferenceCycle() throws IOException {
+		FailureAnalysis analysis = performAnalysis(SelfReferenceBeanConfiguration.class);
+		List<String> lines = readDescriptionLines(analysis);
+		assertThat(lines).hasSize(5);
+		assertThat(lines.get(0))
+				.isEqualTo("The dependencies of some of the beans in the application context form a cycle:");
+		assertThat(lines.get(1)).isEqualTo("");
+		assertThat(lines.get(2)).isEqualTo("┌──->──┐");
+		assertThat(lines.get(3)).startsWith("|  bean defined in " + SelfReferenceBeanConfiguration.class.getName());
+		assertThat(lines.get(4)).isEqualTo("└──<-──┘");
 	}
 
 	@Test
@@ -140,7 +153,7 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 	static class CyclicBeanMethodsConfiguration {
 
 		@Bean
-		public BeanThree three(BeanOne one) {
+		BeanThree three(BeanOne one) {
 			return new BeanThree();
 		}
 
@@ -148,7 +161,7 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		static class InnerConfiguration {
 
 			@Bean
-			public BeanTwo two(BeanThree three) {
+			BeanTwo two(BeanThree three) {
 				return new BeanTwo();
 			}
 
@@ -156,7 +169,7 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 			static class InnerInnerConfiguration {
 
 				@Bean
-				public BeanOne one(BeanTwo two) {
+				BeanOne one(BeanTwo two) {
 					return new BeanOne();
 				}
 
@@ -170,17 +183,17 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 	static class CycleReferencedViaOtherBeansConfiguration {
 
 		@Bean
-		public BeanOne one(BeanTwo two) {
+		BeanOne one(BeanTwo two) {
 			return new BeanOne();
 		}
 
 		@Bean
-		public BeanTwo two(BeanThree three) {
+		BeanTwo two(BeanThree three) {
 			return new BeanTwo();
 		}
 
 		@Bean
-		public BeanThree three(BeanOne beanOne) {
+		BeanThree three(BeanOne beanOne) {
 			return new BeanThree();
 		}
 
@@ -188,7 +201,7 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 		static class InnerConfiguration {
 
 			@Bean
-			public RefererTwo refererTwo() {
+			RefererTwo refererTwo() {
 				return new RefererTwo();
 			}
 
@@ -196,7 +209,7 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 			static class InnerInnerConfiguration {
 
 				@Bean
-				public RefererOne refererOne() {
+				RefererOne refererOne() {
 					return new RefererOne();
 				}
 
@@ -207,35 +220,45 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 	}
 
 	@org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
-	public static class CycleWithAutowiredFields {
+	static class CycleWithAutowiredFields {
 
 		@Bean
-		public BeanOne one(BeanTwo two) {
+		BeanOne one(BeanTwo two) {
 			return new BeanOne();
 		}
 
 		@org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
-		public static class BeanTwoConfiguration {
+		static class BeanTwoConfiguration {
 
 			@SuppressWarnings("unused")
 			@Autowired
 			private BeanThree three;
 
 			@Bean
-			public BeanTwo two() {
+			BeanTwo two() {
 				return new BeanTwo();
 			}
 
 		}
 
 		@org.springframework.context.annotation.Configuration(proxyBeanMethods = false)
-		public static class BeanThreeConfiguration {
+		static class BeanThreeConfiguration {
 
 			@Bean
-			public BeanThree three(BeanOne one) {
+			BeanThree three(BeanOne one) {
 				return new BeanThree();
 			}
 
+		}
+
+	}
+
+	@Configuration(proxyBeanMethods = false)
+	static class SelfReferenceBeanConfiguration {
+
+		@Bean
+		SelfReferenceBean bean(SelfReferenceBean bean) {
+			return new SelfReferenceBean();
 		}
 
 	}
@@ -263,6 +286,13 @@ class BeanCurrentlyInCreationFailureAnalyzerTests {
 	}
 
 	static class BeanThree {
+
+	}
+
+	static class SelfReferenceBean {
+
+		@Autowired
+		SelfReferenceBean bean;
 
 	}
 

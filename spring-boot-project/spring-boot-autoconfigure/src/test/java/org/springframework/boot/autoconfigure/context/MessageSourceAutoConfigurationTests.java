@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.ContextConsumer;
 import org.springframework.context.MessageSource;
 import org.springframework.context.MessageSourceResolvable;
-import org.springframework.context.NoSuchMessageException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
@@ -191,31 +190,31 @@ class MessageSourceAutoConfigurationTests {
 
 	@Configuration(proxyBeanMethods = false)
 	@PropertySource("classpath:/switch-messages.properties")
-	protected static class Config {
+	static class Config {
 
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	protected static class CustomMessageSourceConfiguration {
+	static class CustomMessageSourceConfiguration {
 
 		@Bean
-		public MessageSource messageSource() {
+		MessageSource messageSource() {
 			return new TestMessageSource();
 		}
 
 	}
 
 	@Configuration(proxyBeanMethods = false)
-	protected static class CustomBeanNameMessageSourceConfiguration {
+	static class CustomBeanNameMessageSourceConfiguration {
 
 		@Bean
-		public MessageSource codeReturningMessageSource() {
+		MessageSource codeReturningMessageSource() {
 			return new TestMessageSource();
 		}
 
 	}
 
-	private static class TestMessageSource implements MessageSource {
+	static class TestMessageSource implements MessageSource {
 
 		@Override
 		public String getMessage(String code, Object[] args, String defaultMessage, Locale locale) {
@@ -223,12 +222,12 @@ class MessageSourceAutoConfigurationTests {
 		}
 
 		@Override
-		public String getMessage(String code, Object[] args, Locale locale) throws NoSuchMessageException {
+		public String getMessage(String code, Object[] args, Locale locale) {
 			return code;
 		}
 
 		@Override
-		public String getMessage(MessageSourceResolvable resolvable, Locale locale) throws NoSuchMessageException {
+		public String getMessage(MessageSourceResolvable resolvable, Locale locale) {
 			return resolvable.getCodes()[0];
 		}
 

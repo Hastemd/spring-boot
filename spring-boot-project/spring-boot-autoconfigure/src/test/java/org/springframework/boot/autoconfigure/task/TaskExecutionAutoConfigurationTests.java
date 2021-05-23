@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,13 +23,13 @@ import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.task.TaskExecutorBuilder;
 import org.springframework.boot.task.TaskExecutorCustomizer;
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.boot.test.context.runner.ContextConsumer;
-import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,7 +41,6 @@ import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -73,7 +72,7 @@ class TaskExecutionAutoConfigurationTests {
 					assertThat(taskExecutor).hasFieldOrPropertyWithValue("allowCoreThreadTimeOut", true);
 					assertThat(taskExecutor.getKeepAliveSeconds()).isEqualTo(5);
 					assertThat(taskExecutor).hasFieldOrPropertyWithValue("waitForTasksToCompleteOnShutdown", true);
-					assertThat(taskExecutor).hasFieldOrPropertyWithValue("awaitTerminationSeconds", 30);
+					assertThat(taskExecutor).hasFieldOrPropertyWithValue("awaitTerminationMillis", 30000L);
 					assertThat(taskExecutor.getThreadNamePrefix()).isEqualTo("mytest-");
 				}));
 	}
@@ -92,19 +91,18 @@ class TaskExecutionAutoConfigurationTests {
 		this.contextRunner.withUserConfiguration(TaskDecoratorConfig.class).run((context) -> {
 			assertThat(context).hasSingleBean(TaskExecutorBuilder.class);
 			ThreadPoolTaskExecutor executor = context.getBean(TaskExecutorBuilder.class).build();
-			assertThat(ReflectionTestUtils.getField(executor, "taskDecorator"))
-					.isSameAs(context.getBean(TaskDecorator.class));
+			assertThat(executor).extracting("taskDecorator").isSameAs(context.getBean(TaskDecorator.class));
 		});
 	}
 
 	@Test
-	void taskExecutorAutoConfigured(CapturedOutput capturedOutput) {
+	void taskExecutorAutoConfiguredIsLazy() {
 		this.contextRunner.run((context) -> {
-			assertThat(capturedOutput).doesNotContain("Initializing ExecutorService");
-			assertThat(context).hasSingleBean(Executor.class);
-			assertThat(context).hasBean("applicationTaskExecutor");
+			assertThat(context).hasSingleBean(Executor.class).hasBean("applicationTaskExecutor");
+			BeanDefinition beanDefinition = context.getSourceApplicationContext().getBeanFactory()
+					.getBeanDefinition("applicationTaskExecutor");
+			assertThat(beanDefinition.isLazyInit()).isTrue();
 			assertThat(context).getBean("applicationTaskExecutor").isInstanceOf(ThreadPoolTaskExecutor.class);
-			assertThat(capturedOutput).contains("Initializing ExecutorService");
 		});
 	}
 
@@ -163,7 +161,7 @@ class TaskExecutionAutoConfigurationTests {
 		private final TaskExecutorBuilder taskExecutorBuilder = new TaskExecutorBuilder();
 
 		@Bean
-		public TaskExecutorBuilder customTaskExecutorBuilder() {
+		TaskExecutorBuilder customTaskExecutorBuilder() {
 			return this.taskExecutorBuilder;
 		}
 
@@ -173,7 +171,7 @@ class TaskExecutionAutoConfigurationTests {
 	static class TaskExecutorCustomizerConfig {
 
 		@Bean
-		public TaskExecutorCustomizer mockTaskExecutorCustomizer() {
+		TaskExecutorCustomizer mockTaskExecutorCustomizer() {
 			return mock(TaskExecutorCustomizer.class);
 		}
 
@@ -183,7 +181,7 @@ class TaskExecutionAutoConfigurationTests {
 	static class TaskDecoratorConfig {
 
 		@Bean
-		public TaskDecorator mockTaskDecorator() {
+		TaskDecorator mockTaskDecorator() {
 			return mock(TaskDecorator.class);
 		}
 
@@ -193,7 +191,7 @@ class TaskExecutionAutoConfigurationTests {
 	static class CustomTaskExecutorConfig {
 
 		@Bean
-		public Executor customTaskExecutor() {
+		Executor customTaskExecutor() {
 			return new SyncTaskExecutor();
 		}
 
@@ -214,7 +212,7 @@ class TaskExecutionAutoConfigurationTests {
 	static class TestBean {
 
 		@Async
-		public Future<String> echo(String text) {
+		Future<String> echo(String text) {
 			return new AsyncResult<>(Thread.currentThread().getName() + " " + text);
 		}
 

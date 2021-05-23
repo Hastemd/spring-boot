@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2021 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ class BasicErrorControllerDirectMockMvcTests {
 		ApplicationContextTestUtils.closeAll(this.wac);
 	}
 
-	public void setup(ConfigurableWebApplicationContext context) {
+	void setup(ConfigurableWebApplicationContext context) {
 		this.wac = context;
 		this.mockMvc = MockMvcBuilders.webAppContextSetup(this.wac).build();
 	}
@@ -98,7 +98,7 @@ class BasicErrorControllerDirectMockMvcTests {
 	}
 
 	@Test
-	void errorPageNotAvailableWithWhitelabelDisabled() throws Exception {
+	void errorPageNotAvailableWithWhitelabelDisabled() {
 		setup((ConfigurableWebApplicationContext) new SpringApplication(WebMvcIncludedConfiguration.class)
 				.run("--server.port=0", "--server.error.whitelabel.enabled=false"));
 		assertThatExceptionOfType(ServletException.class)
@@ -127,17 +127,17 @@ class BasicErrorControllerDirectMockMvcTests {
 
 	@Configuration(proxyBeanMethods = false)
 	@MinimalWebConfiguration
-	protected static class ParentConfiguration {
+	static class ParentConfiguration {
 
 	}
 
 	@Configuration(proxyBeanMethods = false)
 	@MinimalWebConfiguration
 	@EnableWebMvc
-	protected static class WebMvcIncludedConfiguration {
+	static class WebMvcIncludedConfiguration {
 
 		// For manual testing
-		public static void main(String[] args) {
+		static void main(String[] args) {
 			SpringApplication.run(WebMvcIncludedConfiguration.class, args);
 		}
 
@@ -145,10 +145,10 @@ class BasicErrorControllerDirectMockMvcTests {
 
 	@Configuration(proxyBeanMethods = false)
 	@MinimalWebConfiguration
-	protected static class VanillaConfiguration {
+	static class VanillaConfiguration {
 
 		// For manual testing
-		public static void main(String[] args) {
+		static void main(String[] args) {
 			SpringApplication.run(VanillaConfiguration.class, args);
 		}
 
@@ -156,10 +156,10 @@ class BasicErrorControllerDirectMockMvcTests {
 
 	@Configuration(proxyBeanMethods = false)
 	@MinimalWebConfiguration
-	protected static class ChildConfiguration {
+	static class ChildConfiguration {
 
 		// For manual testing
-		public static void main(String[] args) {
+		static void main(String[] args) {
 			new SpringApplicationBuilder(ParentConfiguration.class).child(ChildConfiguration.class).run(args);
 		}
 
@@ -169,14 +169,14 @@ class BasicErrorControllerDirectMockMvcTests {
 	@EnableAspectJAutoProxy(proxyTargetClass = false)
 	@MinimalWebConfiguration
 	@Aspect
-	protected static class WithAopConfiguration {
+	static class WithAopConfiguration {
 
 		@Pointcut("within(@org.springframework.stereotype.Controller *)")
 		private void controllerPointCut() {
 		}
 
 		@Around("controllerPointCut()")
-		public Object mvcAdvice(ProceedingJoinPoint pjp) throws Throwable {
+		Object mvcAdvice(ProceedingJoinPoint pjp) throws Throwable {
 			return pjp.proceed();
 		}
 
